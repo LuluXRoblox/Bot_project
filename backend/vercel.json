@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "api/setup.js": {
+      "maxDuration": 60
+    },
+    "api/interactions.js": {
+      "maxDuration": 60
+    }
+  }
+}
