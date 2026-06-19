@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/setup.js": {
+      "maxDuration": 60
+    }
+  }
+}
