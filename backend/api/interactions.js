@@ -1,4 +1,5 @@
 import { InteractionType, InteractionResponseType } from 'discord-interactions';
+import { waitUntil } from '@vercel/functions';
 import { isValidRequest, readRawBody } from '../lib/discord-verify.js';
 import { runSetup, listTemplates } from '../lib/setup-engine.js';
 import { pushHistory, getHistory } from '../lib/db.js';
@@ -83,29 +84,34 @@ async function handleCommand(interaction, res) {
     // Balas dulu "lagi proses..." (deferred) - Discord cuma kasih 3 detik buat respond awal
     res.status(200).json({ type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE });
 
-    // Proses berat dilakukan SETELAH respond awal dikirim, lalu update pesannya
-    try {
-      const result = await runSetup({ guildId, templateKey, mode });
-      await sendFollowup(interaction, formatSetupResult(result));
-      await pushHistory(guildId, {
-        guildId,
-        template: templateKey,
-        mode,
-        date: new Date().toISOString(),
-        status: 'success',
-        result,
-      });
-    } catch (err) {
-      await sendFollowup(interaction, `❌ Setup gagal: ${err.message}`);
-      await pushHistory(guildId, {
-        guildId,
-        template: templateKey,
-        mode,
-        date: new Date().toISOString(),
-        status: 'failed',
-        error: err.message,
-      });
-    }
+    // PENTING: Vercel matiin function begitu response terkirim, kecuali dibungkus waitUntil.
+    // Ini yang bikin proses setup tetap jalan sampai selesai walau respond awal udah dikirim.
+    waitUntil(
+      (async () => {
+        try {
+          const result = await runSetup({ guildId, templateKey, mode });
+          await sendFollowup(interaction, formatSetupResult(result));
+          await pushHistory(guildId, {
+            guildId,
+            template: templateKey,
+            mode,
+            date: new Date().toISOString(),
+            status: 'success',
+            result,
+          });
+        } catch (err) {
+          await sendFollowup(interaction, `❌ Setup gagal: ${err.message}`);
+          await pushHistory(guildId, {
+            guildId,
+            template: templateKey,
+            mode,
+            date: new Date().toISOString(),
+            status: 'failed',
+            error: err.message,
+          });
+        }
+      })()
+    );
     return;
   }
 
@@ -114,11 +120,11 @@ async function handleCommand(interaction, res) {
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: { content: '👋 Oke, bot akan keluar dari server ini.' },
     });
-    try {
-      await leaveGuild(guildId);
-    } catch (e) {
-      /* abaikan kalau gagal */
-    }
+    waitUntil(
+      leaveGuild(guildId).catch(() => {
+        /* abaikan kalau gagal */
+      })
+    );
     return;
   }
 
