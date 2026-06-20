@@ -1,9 +1,0 @@
-{
-  "name": "discord-setup-bot-api",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "mongodb": "^6.10.0""
-  }
-}
