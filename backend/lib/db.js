@@ -13,16 +13,25 @@ let cachedDb = null;
 let indexesReady = false;
 
 async function getDb() {
+  // Cek dulu koneksi lama masih hidup, kalau gak buang & bikin baru
+  if (cachedClient) {
+    try {
+      await cachedClient.db('admin').command({ ping: 1 });
+    } catch (e) {
+      cachedClient = null;
+      cachedDb = null;
+      indexesReady = false;
+    }
+  }
+
   if (!cachedClient) {
     cachedClient = new MongoClient(uri);
     await cachedClient.connect();
-  }
-  if (!cachedDb) {
     cachedDb = cachedClient.db(dbName);
   }
 
   if (!indexesReady) {
-    // Idempotent - aman dipanggil berkali-kali, cuma benar2 jalan sekali per cold start
+    // Idempotent - aman dipanggil berkali-kali, cuma benar2 jalan sekali per koneksi baru
     await Promise.all([
       cachedDb.collection('verify_codes').createIndex({ createdAt: 1 }, { expireAfterSeconds: 5 * 60 }),
       cachedDb.collection('sessions').createIndex({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 }),
