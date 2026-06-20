@@ -11,12 +11,16 @@ function sleep(ms) {
 async function discordRequest(endpoint, { method = 'GET', body } = {}) {
   if (!BOT_TOKEN) throw new Error('DISCORD_BOT_TOKEN belum di-set di env Vercel');
 
+  const headers = {
+    Authorization: `Bot ${BOT_TOKEN}`,
+  };
+  if (body) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const res = await fetch(`${API_BASE}${endpoint}`, {
     method,
-    headers: {
-      Authorization: `Bot ${BOT_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
 
